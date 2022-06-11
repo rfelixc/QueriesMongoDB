@@ -1,0 +1,235 @@
+show dbs
+db
+use sample_upc
+
+//Crear colecciones con JSONSquema
+//Validaciones tienen dos opciones:
+//1) Valitaion Level: determina a que documentos se la aplica las reglas de validacion
+    //strict: por defecto: las reglas de validación se aplican a las inserciones y actualizaciones
+    //moderate: colocarlo de manera explicita: las reglas se aplican solo a las inserciones y a los documentos
+                    //que cumplen con las reglas de validacion
+
+//2) Validation Action: que acción va a ejectuar cuando un documento no cumple con las reglas de validación
+    //error: por defecto: rechazar la actualización e inserción de documentos que no cumplen con las reglas de validación
+    //warn: colocarlo de manera explícita: si permite la actualización o inserción a pesar de que no cumpla con las reglas
+            //solo muestra una advertencia
+
+//crear collection students
+db.createCollection(
+    "students",
+    { validator:
+        { $jsonSchema:
+            {   bsonType: "object",
+                description: "document describing a student",
+                required: ["name", "year","courses","address"],
+                properties:
+                {
+                    "name" :{
+                        bsonType: "string",
+                        description: "Name is string and its required"
+                    },
+                    "year" : {
+                        bsonType: "int",
+                        minimum: 2000,
+                        maximum: 2022,
+                        description: "Year must be int and its required"
+                    },
+                    "courses":{
+                        bsonType: "array",
+                        description: "Courses must be an array of strings",
+                        minItems: 1,
+                        uniqueItems: true,
+                        items: {
+                            bsonType: "string"
+                        }
+                    },
+                    "address":{
+                        bsonType: "object",
+                        required: ["city"],
+                        properties: {
+                            "city" :{
+                                bsonType: "string",
+                                description: "City must be a string and its required"
+                            },
+                            "street":{
+                                bsonType: "string",
+                                description: "Street must be a string and its optional"
+                            }
+                        }
+                    },
+                    "genre":{
+                        enum: ["M","F"],
+                        description: "Genre can be M or F and its optional"
+                    }
+                }
+
+            }
+
+        }
+
+    }
+)
+
+db.students.find()
+
+//caso de error
+db.students.insertOne(
+    {
+        name: "Sergio Padilla",
+        year : NumberInt(2000),
+        courses : ["SI400","SI200"]
+    }
+)
+
+
+//caso válido
+db.students.insertOne(
+    {
+        name: "Luis Mederos",
+        year: NumberInt(2000),
+        courses: ["SI400","SI200"],
+        address: {
+            city: "Lima",
+            street : "847 Republica de Colombia"
+        }
+    }
+)
+
+db.students.insertOne(
+    {
+        name: "Ivan Moreno",
+        year: NumberInt(2022),
+        courses: ["SI400"],
+        address:{
+            city: "Lima",
+            street: "847 La Marina Ave"
+        },
+        genre: "M"
+    }
+)
+
+db.students.insertOne(
+    {
+        name: "Camila Samamé",
+        year: NumberInt(2015),
+        courses: ["SI400", "SI200", "SI300"],
+        address:{
+            city: "Trujillo"
+        }
+    }
+)
+
+db.students.find()
+
+//crear collection
+//validationAction: warn
+
+db.createCollection(
+    "contacts",{
+        validator:{
+            $jsonSchema:{
+                bsonType: "object",
+                description: "document describing a contact",
+                required: ["email"],
+                properties:{
+                    email:{
+                        bsonType: "string",
+                        pattern: "@upc\.edu$",
+                        description: "Email must be a string and is required"
+                    },
+                    telephone:{
+                        bsonType: "string",
+                        description: "Telephone must be string and is optional"
+                    }
+                }
+            }
+        }
+   }
+)
+
+db.runCommand(
+{
+    collMod: "contacts",
+    validator:{
+            $jsonSchema:{
+                bsonType: "object",
+                description: "document describing a contact",
+                required: ["email"],
+                properties:{
+                    email:{
+                        bsonType: "string",
+                        pattern: "@upc\.edu$",
+                        description: "Email must be a string and is required"
+                    },
+                    telephone:{
+                        bsonType: "string",
+                        description: "Telephone must be string and is optional"
+                    }
+                }
+            }
+        },
+    validationAction: "warn"
+}
+)
+
+db.contacts.insertOne({ telephone: "993405939"})
+db.contacts.insertOne({email: "avelasquez@upc.edu"})
+db.contacts.insertOne({telephone: "993455555"})
+
+db.contacts.find()
+
+db.createCollection(
+    "teachers",
+    { validator:
+        { $or: [
+            {
+                $jsonSchema:
+                    {
+                        bsonType: "object",
+                        description: "Document describing a teacher",
+                        required: ["first_name"],
+                        properties:{
+                            first_name:{
+                                bsonType: "string",
+                                description: "First name must be string and is required"
+                            }
+                        }
+
+                    }
+            },
+            {
+                $jsonSchema:
+                    {
+                        bsonType: "object",
+                        description: "Document describing a teacher",
+                        required : ["last_name"],
+                        properties:{
+                            last_name:{
+                                bsonType:"string",
+                                description: "Last name must be string and is required"
+                            }
+                        }
+
+                    }
+            }
+        ]
+
+        }
+
+    }
+)
+
+db.teachers.insertOne(
+{first_name: "Marcos"}
+)
+
+db.teachers.insertOne({last_name:"Cruzate"})
+
+db.teachers.insertMany(
+[
+{last_name: "Vilchez"},
+{first_name: "Cristian"}
+]
+)
+
+db.teachers.find()
